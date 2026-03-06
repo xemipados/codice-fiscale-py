@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calcolo Codice Fiscale</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+  <style>
+    /* ── DARK THEME (default) ── */
+    :root {
+      --bg: #0e0e12;
+      --surface: #16161d;
+      --surface2: #1e1e28;
+      --border: #2a2a38;
+      --accent: #c8a96e;
+      --accent2: #e8c98e;
+      --text: #e8e8f0;
+      --text-muted: #8888a8;
+      --red: #e05555;
+      --green: #55c49e;
+      --grid-color: rgba(200,169,110,0.03);
+      --focus-shadow: rgba(200,169,110,0.12);
+      --radio-checked-text: #0e0e12;
+      --btn-text: #0e0e12;
+    }
+
+    /* ── LIGHT THEME ── */
+    [data-theme="light"] {
+      --bg: #fdf6f8;
+      --surface: #fff9fb;
+      --surface2: #fef1f5;
+      --border: #f0d6e0;
+      --accent: #c4748a;
+      --accent2: #d9899d;
+      --text: #3a2530;
+      --text-muted: #b08898;
+      --red: #c94545;
+      --green: #3eaa82;
+      --grid-color: rgba(196,116,138,0.05);
+      --focus-shadow: rgba(196,116,138,0.15);
+      --radio-checked-text: #fff9fb;
+      --btn-text: #fff9fb;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      transition: background 0.4s, color 0.4s;
+    }
+
+    /* Grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--grid-color) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Light theme: soft floral blobs */
+    [data-theme="light"] body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 600px 400px at 10% 20%, rgba(255,200,220,0.18) 0%, transparent 70%),
+        radial-gradient(ellipse 500px 350px at 90% 80%, rgba(180,220,200,0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 400px 300px at 60% 10%, rgba(255,180,200,0.10) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Theme toggle button ── */
+    .theme-toggle {
+      position: fixed;
+      top: 20px;
+      right: 24px;
+      z-index: 100;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 50px;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.3s, border-color 0.3s, color 0.3s, box-shadow 0.2s;
+    }
+
+    .theme-toggle:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+
+    .theme-toggle .toggle-icon {
+      font-size: 14px;
+      transition: transform 0.4s;
+    }
+
+    .theme-toggle:hover .toggle-icon {
+      transform: rotate(20deg);
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 60px 24px 80px;
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+      margin-bottom: 56px;
+    }
+
+    .header-badge {
+      display: inline-block;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      padding: 4px 14px;
+      border-radius: 2px;
+      margin-bottom: 20px;
+      opacity: 0;
+      animation: fadeIn 0.6s forwards 0.2s;
+      transition: color 0.4s, border-color 0.4s;
+    }
+
+    [data-theme="light"] .header-badge {
+      border-radius: 20px;
+      letter-spacing: 0.15em;
+    }
+
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2.4rem, 6vw, 3.8rem);
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      opacity: 0;
+      animation: slideUp 0.7s forwards 0.3s;
+    }
+
+    [data-theme="light"] h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-style: italic;
+      letter-spacing: 0.01em;
+    }
+
+    h1 span {
+      color: var(--accent);
+      display: block;
+      transition: color 0.4s;
+    }
+
+    [data-theme="light"] h1 span {
+      font-style: normal;
+      font-weight: 400;
+    }
+
+    .subtitle {
+      margin-top: 14px;
+      color: var(--text-muted);
+      font-size: 15px;
+      font-weight: 300;
+      opacity: 0;
+      animation: fadeIn 0.6s forwards 0.5s;
+    }
+
+    /* Decorative line */
+    .divider {
+      width: 60px;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent), transparent);
+      margin: 24px auto 0;
+      opacity: 0;
+      animation: fadeIn 0.6s forwards 0.6s;
+    }
+
+    /* Card */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 40px;
+      opacity: 0;
+      animation: slideUp 0.7s forwards 0.5s;
+      transition: background 0.4s, border-color 0.4s, box-shadow 0.4s;
+    }
+
+    [data-theme="light"] .card {
+      border-radius: 20px;
+      box-shadow: 0 4px 40px rgba(196,116,138,0.08), 0 1px 8px rgba(196,116,138,0.06);
+      border-color: rgba(240,214,224,0.8);
+    }
+
+    .card-section-title {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* Form grid */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .form-group.full { grid-column: 1 / -1; }
+
+    label {
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      font-family: 'DM Mono', monospace;
+    }
+
+    input, select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      padding: 12px 16px;
+      border-radius: 3px;
+      width: 100%;
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.4s;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    [data-theme="light"] input,
+    [data-theme="light"] select {
+      border-radius: 12px;
+    }
+
+    input::placeholder { color: var(--text-muted); opacity: 0.6; }
+
+    input:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--focus-shadow);
+    }
+
+    select {
+      cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238888a8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 38px;
+    }
+
+    /* Radio group */
+    .radio-group {
+      display: flex;
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+      transition: border-color 0.4s;
+    }
+
+    [data-theme="light"] .radio-group {
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .radio-group label {
+      flex: 1;
+      text-align: center;
+      padding: 12px;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-size: 12px;
+      color: var(--text-muted);
+      background: var(--surface2);
+    }
+
+    .radio-group input[type="radio"] { display: none; }
+
+    .radio-group input[type="radio"]:checked + label {
+      background: var(--accent);
+      color: var(--radio-checked-text);
+      font-weight: 500;
+    }
+
+    /* Button */
+    .btn-calculate {
+      margin-top: 32px;
+      width: 100%;
+      padding: 16px;
+      background: var(--accent);
+      color: var(--btn-text);
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s, border-radius 0.4s;
+      font-weight: 500;
+    }
+
+    [data-theme="light"] .btn-calculate {
+      border-radius: 14px;
+      letter-spacing: 0.15em;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .btn-calculate:hover { background: var(--accent2); }
+    .btn-calculate:active { transform: scale(0.99); }
+
+    /* Result */
+    .result-card {
+      margin-top: 28px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 32px 40px;
+      display: none;
+      opacity: 0;
+      animation: slideUp 0.5s forwards;
+      transition: background 0.4s, border-color 0.4s;
+    }
+
+    [data-theme="light"] .result-card {
+      border-radius: 20px;
+      box-shadow: 0 2px 24px rgba(196,116,138,0.10);
+      border-color: rgba(240,214,224,0.9);
+      background: linear-gradient(135deg, #fff9fb 0%, #fef1f5 100%);
+    }
+
+    .result-card.visible { display: block; }
+
+    .result-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.25em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    .result-code {
+      font-family: 'DM Mono', monospace;
+      font-size: clamp(1.6rem, 5vw, 2.4rem);
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .result-code .segment {
+      position: relative;
+      display: inline-block;
+    }
+
+    .result-code .seg-cognome { color: #7eb8f7; }
+    .result-code .seg-nome { color: #a78bf5; }
+    .result-code .seg-anno { color: #f7c97e; }
+    .result-code .seg-mese { color: #f78eb8; }
+    .result-code .seg-giorno { color: #7ef7c9; }
+    .result-code .seg-comune { color: #f7a87e; }
+    .result-code .seg-ctrl { color: var(--accent); }
+
+    .copy-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      padding: 6px 12px;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s, border-radius 0.4s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    [data-theme="light"] .copy-btn { border-radius: 8px; }
+
+    .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .copy-btn.copied { border-color: var(--green); color: var(--green); }
+
+    /* Legend */
+    .legend {
+      margin-top: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 20px;
+      font-size: 11px;
+      font-family: 'DM Mono', monospace;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-muted);
+    }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    /* Error */
+    .error-msg {
+      margin-top: 12px;
+      color: var(--red);
+      font-size: 13px;
+      font-family: 'DM Mono', monospace;
+      display: none;
+    }
+
+    /* Comune search */
+    .comune-wrapper {
+      position: relative;
+    }
+
+    .comune-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: var(--surface2);
+      border: 1px solid var(--accent);
+      border-top: none;
+      border-radius: 0 0 3px 3px;
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 100;
+      display: none;
+      transition: background 0.4s;
+    }
+
+    [data-theme="light"] .comune-dropdown {
+      border-radius: 0 0 12px 12px;
+      box-shadow: 0 8px 24px rgba(196,116,138,0.12);
+    }
+
+    .comune-dropdown.open { display: block; }
+
+    .comune-option {
+      padding: 10px 16px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.15s;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .comune-option:hover { background: var(--border); }
+
+    .comune-code {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--accent);
+    }
+
+    .comune-dropdown::-webkit-scrollbar { width: 4px; }
+    .comune-dropdown::-webkit-scrollbar-track { background: var(--surface2); }
+    .comune-dropdown::-webkit-scrollbar-thumb { background: var(--border); }
+
+    /* Animations */
+    @keyframes fadeIn { to { opacity: 1; } }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 600px) {
+      .card { padding: 28px 20px; }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-group.full { grid-column: 1; }
+    }
+
+    /* ── Navigation tabs ── */
+    .nav-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 0;
+      margin-bottom: 40px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      opacity: 0;
+      animation: fadeIn 0.6s forwards 0.4s;
+      transition: background 0.4s, border-color 0.4s;
+    }
+
+    [data-theme="light"] .nav-tabs {
+      border-radius: 16px;
+      box-shadow: 0 2px 16px rgba(196,116,138,0.08);
+    }
+
+    .nav-tab {
+      flex: 1;
+      padding: 14px 20px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+      position: relative;
+    }
+
+    .nav-tab.active {
+      color: var(--accent);
+      background: var(--surface2);
+    }
+
+    .nav-tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 10%;
+      right: 10%;
+      height: 2px;
+      background: var(--accent);
+      border-radius: 2px 2px 0 0;
+    }
+
+    .nav-tab:hover:not(.active) { color: var(--text); }
+
+    /* ── Pages ── */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ── Inverse result ── */
+    .inv-result {
+      margin-top: 28px;
+      display: none;
+      opacity: 0;
+      animation: slideUp 0.5s forwards;
+    }
+    .inv-result.visible { display: block; }
+
+    .inv-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 600px) { .inv-grid { grid-template-columns: 1fr; } }
+
+    .inv-field {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 18px 20px;
+      transition: background 0.4s, border-color 0.4s;
+    }
+
+    [data-theme="light"] .inv-field {
+      border-radius: 14px;
+      box-shadow: 0 2px 10px rgba(196,116,138,0.06);
+    }
+
+    .inv-field-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .inv-field-value {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .inv-field-value.highlight { color: var(--accent); font-family: 'DM Mono', monospace; }
+
+    .inv-full { grid-column: 1 / -1; }
+  </style>
+</head>
+<body>
+<button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()">
+  <span class="toggle-icon" id="toggle-icon">🌸</span>
+  <span id="toggle-label">Tema chiaro</span>
+</button>
+<div class="container">
+  <header>
+    <div class="header-badge">Repubblica Italiana · D.P.R. 605/1973</div>
+    <h1>Calcolo<span>Codice Fiscale</span></h1>
+    <p class="subtitle">Inserisci i tuoi dati anagrafici per generare il codice fiscale</p>
+    <div class="divider"></div>
+  </header>
+
+  <!-- Navigazione -->
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="switchPage('calcola')">⟶ Calcola CF</button>
+    <button class="nav-tab" onclick="switchPage('decodifica')">⟵ Decodifica CF</button>
+  </div>
+
+  <!-- PAGINA 1: Calcola CF -->
+  <div class="page active" id="page-calcola">
+  <div class="card">
+    <div class="card-section-title">Dati anagrafici</div>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="cognome">Cognome</label>
+        <input type="text" id="cognome" placeholder="es. Rossi" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label for="nome">Nome</label>
+        <input type="text" id="nome" placeholder="es. Mario" autocomplete="off">
+      </div>
+
+      <div class="form-group">
+        <label for="giorno">Giorno di nascita</label>
+        <input type="number" id="giorno" placeholder="1–31" min="1" max="31">
+      </div>
+      <div class="form-group">
+        <label for="mese">Mese di nascita</label>
+        <select id="mese">
+          <option value="">— Seleziona —</option>
+          <option value="1">Gennaio</option>
+          <option value="2">Febbraio</option>
+          <option value="3">Marzo</option>
+          <option value="4">Aprile</option>
+          <option value="5">Maggio</option>
+          <option value="6">Giugno</option>
+          <option value="7">Luglio</option>
+          <option value="8">Agosto</option>
+          <option value="9">Settembre</option>
+          <option value="10">Ottobre</option>
+          <option value="11">Novembre</option>
+          <option value="12">Dicembre</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="anno">Anno di nascita</label>
+        <input type="number" id="anno" placeholder="es. 1990" min="1900" max="2099">
+      </div>
+
+      <div class="form-group">
+        <label>Sesso</label>
+        <div class="radio-group">
+          <input type="radio" name="sesso" id="sesso-m" value="M" checked>
+          <label for="sesso-m">Maschio</label>
+          <input type="radio" name="sesso" id="sesso-f" value="F">
+          <label for="sesso-f">Femmina</label>
+        </div>
+      </div>
+
+      <div class="form-group full">
+        <label for="comune-input">Comune di nascita</label>
+        <div class="comune-wrapper">
+          <input type="text" id="comune-input" placeholder="Cerca comune o stato estero…" autocomplete="off">
+          <div class="comune-dropdown" id="comune-dropdown"></div>
+          <input type="hidden" id="comune-code">
+        </div>
+      </div>
+    </div>
+
+    <div class="error-msg" id="error-msg"></div>
+    <button class="btn-calculate" onclick="calculateCF()">↳ Calcola Codice Fiscale</button>
+  </div>
+
+  <div class="result-card" id="result-card">
+    <div class="result-label">Codice Fiscale Generato</div>
+    <div class="result-code" id="result-code"></div>
+    <div class="legend" id="result-legend"></div>
+    <div style="margin-top:20px;">
+      <button class="copy-btn" id="copy-btn" onclick="copyCode()">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        Copia
+      </button>
+    </div>
+  </div>
+  </div><!-- /page-calcola -->
+
+  <!-- PAGINA 2: CF Inverso -->
+  <div class="page" id="page-decodifica">
+  <div class="card">
+    <div class="card-section-title">Codice fiscale da invertire</div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label for="cf-input">Codice Fiscale (16 caratteri)</label>
+        <input type="text" id="cf-input" placeholder="es. RSSMRA85M01H501Z"
+          maxlength="16" autocomplete="off"
+          oninput="this.value=this.value.toUpperCase(); reverseLive();"
+          style="text-transform:uppercase;font-family:'DM Mono',monospace;font-size:18px;letter-spacing:0.12em;">
+      </div>
+    </div>
+    <div class="error-msg" id="inv-error-msg"></div>
+    <button class="btn-calculate" onclick="reverseCF()">↺ Inverti Codice Fiscale</button>
+  </div>
+
+  <div class="inv-result" id="inv-result">
+    <div class="card" style="text-align:center;">
+      <div class="card-section-title" style="justify-content:center;">Risultato</div>
+
+      <div style="margin-bottom:18px;">
+        <div style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;color:var(--text-muted);margin-bottom:8px;">ORIGINALE</div>
+        <div id="inv-original" style="font-family:'DM Mono',monospace;font-size:clamp(1.4rem,4vw,2rem);letter-spacing:0.18em;color:var(--text-muted);"></div>
+      </div>
+
+      <div style="font-size:2rem;color:var(--accent);margin:8px 0;">↕</div>
+
+      <div style="margin-bottom:24px;">
+        <div style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;color:var(--text-muted);margin-bottom:8px;">INVERSO</div>
+        <div id="inv-reversed" style="font-family:'DM Mono',monospace;font-size:clamp(1.4rem,4vw,2rem);letter-spacing:0.18em;color:var(--accent);font-weight:500;"></div>
+      </div>
+
+      <button class="copy-btn" id="inv-copy-btn" onclick="copyReversed()">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        Copia inverso
+      </button>
+    </div>
+  </div>
+
+  <!-- Oppure calcola prima il CF dai dati -->
+  <div class="card" style="margin-top:28px;opacity:0;animation:slideUp 0.7s forwards 0.2s;">
+    <div class="card-section-title">Oppure: calcola il CF dai dati e poi invertilo</div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;">Inserisci i dati anagrafici, il sistema calcola il codice fiscale e ne produce subito l'inverso.</p>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="inv-cognome">Cognome</label>
+        <input type="text" id="inv-cognome" placeholder="es. Rossi" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label for="inv-nome">Nome</label>
+        <input type="text" id="inv-nome" placeholder="es. Mario" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label for="inv-giorno">Giorno</label>
+        <input type="number" id="inv-giorno" placeholder="1–31" min="1" max="31">
+      </div>
+      <div class="form-group">
+        <label for="inv-mese">Mese</label>
+        <select id="inv-mese">
+          <option value="">— Seleziona —</option>
+          <option value="1">Gennaio</option><option value="2">Febbraio</option>
+          <option value="3">Marzo</option><option value="4">Aprile</option>
+          <option value="5">Maggio</option><option value="6">Giugno</option>
+          <option value="7">Luglio</option><option value="8">Agosto</option>
+          <option value="9">Settembre</option><option value="10">Ottobre</option>
+          <option value="11">Novembre</option><option value="12">Dicembre</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="inv-anno">Anno</label>
+        <input type="number" id="inv-anno" placeholder="es. 1990" min="1900" max="2099">
+      </div>
+      <div class="form-group">
+        <label>Sesso</label>
+        <div class="radio-group">
+          <input type="radio" name="inv-sesso" id="inv-sesso-m" value="M" checked>
+          <label for="inv-sesso-m">Maschio</label>
+          <input type="radio" name="inv-sesso" id="inv-sesso-f" value="F">
+          <label for="inv-sesso-f">Femmina</label>
+        </div>
+      </div>
+      <div class="form-group full">
+        <label for="inv-comune-input">Comune di nascita</label>
+        <div class="comune-wrapper">
+          <input type="text" id="inv-comune-input" placeholder="Cerca comune o stato estero…" autocomplete="off">
+          <div class="comune-dropdown" id="inv-comune-dropdown"></div>
+          <input type="hidden" id="inv-comune-code">
+        </div>
+      </div>
+    </div>
+    <div class="error-msg" id="inv2-error-msg"></div>
+    <button class="btn-calculate" onclick="calcAndReverse()">↺ Calcola CF e Invertilo</button>
+  </div>
+
+  <div class="inv-result" id="inv2-result">
+    <div class="card" style="text-align:center;">
+      <div class="card-section-title" style="justify-content:center;">Risultato</div>
+      <div style="margin-bottom:8px;">
+        <div style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;color:var(--text-muted);margin-bottom:8px;">CODICE FISCALE</div>
+        <div id="inv2-cf" style="font-family:'DM Mono',monospace;font-size:clamp(1.4rem,4vw,2rem);letter-spacing:0.18em;color:var(--text-muted);"></div>
+      </div>
+      <div style="font-size:2rem;color:var(--accent);margin:8px 0;">↕</div>
+      <div style="margin-bottom:24px;">
+        <div style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;color:var(--text-muted);margin-bottom:8px;">INVERSO</div>
+        <div id="inv2-reversed" style="font-family:'DM Mono',monospace;font-size:clamp(1.4rem,4vw,2rem);letter-spacing:0.18em;color:var(--accent);font-weight:500;"></div>
+      </div>
+      <button class="copy-btn" id="inv2-copy-btn" onclick="copyReversed2()">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        Copia inverso
+      </button>
+    </div>
+  </div>
+
+  </div><!-- /page-decodifica -->
+
+</div>
+
+<script>
+// ── Mese codes ──────────────────────────────────────────────────────────────
+const MESE_CODES = ['A','B','C','D','E','H','L','M','P','R','S','T'];
+
+// ── Comuni database ─────────────────────────────────────────────────────────
+const COMUNI_DB = [
+  // A
+  {n:"Acerra",c:"A024"},{n:"Aci Castello",c:"A025"},{n:"Aci Catena",c:"A027"},
+  {n:"Acireale",c:"A028"},{n:"Acri",c:"A053"},{n:"Adrano",c:"A056"},
+  {n:"Afragola",c:"A064"},{n:"Agrigento",c:"A089"},{n:"Agropoli",c:"A091"},
+  {n:"Alba",c:"A124"},{n:"Albano Laziale",c:"A132"},{n:"Albenga",c:"A145"},
+  {n:"Alghero",c:"A192"},{n:"Alessandria",c:"A182"},{n:"Altamura",c:"A225"},
+  {n:"Ancona",c:"A271"},{n:"Andria",c:"A285"},{n:"Aosta",c:"A326"},
+  {n:"Aprilia",c:"A341"},{n:"L'Aquila",c:"A345"},{n:"Arezzo",c:"A390"},
+  {n:"Ariano Irpino",c:"A399"},{n:"Ascoli Piceno",c:"A462"},{n:"Asti",c:"A479"},
+  {n:"Aversa",c:"A512"},{n:"Avellino",c:"A509"},{n:"Avola",c:"A522"},
+  // B
+  {n:"Bagheria",c:"A546"},{n:"Barcellona Pozzo di Gotto",c:"A638"},
+  {n:"Bari",c:"A662"},{n:"Barletta",c:"A669"},{n:"Battipaglia",c:"A717"},
+  {n:"Belluno",c:"A757"},{n:"Benevento",c:"A783"},{n:"Bergamo",c:"A794"},
+  {n:"Biella",c:"A859"},{n:"Bitonto",c:"A892"},{n:"Bologna",c:"A944"},
+  {n:"Bolzano",c:"A952"},{n:"Brescia",c:"B157"},{n:"Brindisi",c:"B180"},
+  {n:"Bronte",c:"B202"},{n:"Busto Arsizio",c:"B300"},
+  // C
+  {n:"Cagliari",c:"B354"},{n:"Caivano",c:"B371"},{n:"Caltanissetta",c:"B429"},
+  {n:"Campobasso",c:"B519"},{n:"Carpi",c:"B819"},{n:"Carrara",c:"B832"},
+  {n:"Casalnuovo di Napoli",c:"B905"},{n:"Caserta",c:"B963"},
+  {n:"Casoria",c:"B990"},{n:"Castellammare di Stabia",c:"C129"},
+  {n:"Catania",c:"C351"},{n:"Catanzaro",c:"C352"},{n:"Cava de' Tirreni",c:"C361"},
+  {n:"Cesena",c:"C573"},{n:"Chieti",c:"C469"},{n:"Cinisello Balsamo",c:"C707"},
+  {n:"Civitavecchia",c:"C773"},{n:"Como",c:"C933"},{n:"Corigliano-Rossano",c:"D004"},
+  {n:"Cosenza",c:"D086"},{n:"Cremona",c:"D150"},{n:"Crotone",c:"D122"},
+  {n:"Cuneo",c:"D205"},
+  // E-F
+  {n:"Enna",c:"C342"},{n:"Ercolano",c:"H243"},{n:"Faenza",c:"D458"},
+  {n:"Fermo",c:"D542"},{n:"Ferrara",c:"D548"},{n:"Firenze",c:"D612"},
+  {n:"Fiumicino",c:"M297"},{n:"Foggia",c:"D643"},{n:"Forlì",c:"D704"},
+  {n:"Formia",c:"D708"},{n:"Frosinone",c:"D810"},
+  // G
+  {n:"Gallarate",c:"D869"},{n:"Gela",c:"D960"},{n:"Genova",c:"D969"},
+  {n:"Giugliano in Campania",c:"E054"},{n:"Gorizia",c:"E098"},
+  {n:"Grosseto",c:"E202"},{n:"Guidonia Montecelio",c:"E263"},
+  // I-L
+  {n:"Imola",c:"E289"},{n:"Imperia",c:"E290"},{n:"Isernia",c:"E335"},
+  {n:"La Spezia",c:"E463"},{n:"Lanciano",c:"E435"},{n:"Latina",c:"E472"},
+  {n:"Lecce",c:"E492"},{n:"Lecco",c:"E498"},{n:"Livorno",c:"E625"},
+  {n:"Lodi",c:"E648"},{n:"Lucca",c:"E715"},
+  // M
+  {n:"Macerata",c:"E783"},{n:"Manfredonia",c:"E885"},{n:"Mantova",c:"E897"},
+  {n:"Marsala",c:"E974"},{n:"Massa",c:"F023"},{n:"Matera",c:"F052"},
+  {n:"Mazara del Vallo",c:"F061"},{n:"Messina",c:"F158"},{n:"Milano",c:"F205"},
+  {n:"Modena",c:"F257"},{n:"Molfetta",c:"F284"},{n:"Mondragone",c:"F352"},
+  {n:"Monterotondo",c:"F610"},{n:"Monza",c:"F704"},
+  // N
+  {n:"Napoli",c:"F839"},{n:"Nocera Inferiore",c:"F913"},{n:"Nola",c:"F924"},
+  {n:"Novara",c:"F952"},{n:"Nuoro",c:"F979"},
+  // O-P
+  {n:"Olbia",c:"G015"},{n:"Oristano",c:"G113"},{n:"Pachino",c:"G209"},
+  {n:"Padova",c:"G224"},{n:"Palermo",c:"G273"},{n:"Parma",c:"G337"},
+  {n:"Pavia",c:"G388"},{n:"Perugia",c:"G478"},{n:"Pesaro",c:"G479"},
+  {n:"Pescara",c:"G482"},{n:"Piacenza",c:"G535"},{n:"Pisa",c:"G702"},
+  {n:"Pistoia",c:"G713"},{n:"Pomezia",c:"G811"},{n:"Pordenone",c:"G888"},
+  {n:"Portici",c:"G902"},{n:"Potenza",c:"G942"},{n:"Pozzuoli",c:"G964"},
+  {n:"Prato",c:"G999"},
+  // Q-R
+  {n:"Qualiano",c:"H101"},{n:"Quartu Sant'Elena",c:"H118"},
+  {n:"Ragusa",c:"H163"},{n:"Ravenna",c:"H199"},{n:"Reggio Calabria",c:"H224"},
+  {n:"Reggio Emilia",c:"H223"},{n:"Rho",c:"H264"},{n:"Rieti",c:"H282"},
+  {n:"Rimini",c:"H294"},{n:"Roma",c:"H501"},{n:"Rovigo",c:"H620"},
+  // S
+  {n:"Salerno",c:"H703"},{n:"San Giorgio a Cremano",c:"H892"},
+  {n:"San Giovanni la Punta",c:"H922"},{n:"San Severo",c:"I158"},
+  {n:"Sanremo",c:"I138"},{n:"Sassari",c:"I452"},{n:"Savona",c:"I480"},
+  {n:"Scafati",c:"I483"},{n:"Sciacca",c:"I533"},{n:"Sesto San Giovanni",c:"I690"},
+  {n:"Siena",c:"I726"},{n:"Siracusa",c:"I754"},{n:"Sondrio",c:"I829"},
+  {n:"Sorrento",c:"I862"},{n:"Sud Sardegna",c:"M337"},
+  // T
+  {n:"Taranto",c:"L049"},{n:"Teramo",c:"L103"},{n:"Terni",c:"L117"},
+  {n:"Tivoli",c:"L182"},{n:"Torino",c:"L219"},{n:"Torre Annunziata",c:"L245"},
+  {n:"Torre del Greco",c:"L259"},{n:"Trapani",c:"L331"},{n:"Trento",c:"L378"},
+  {n:"Treviso",c:"L407"},{n:"Trieste",c:"L424"},
+  // U-V-Z
+  {n:"Udine",c:"L483"},{n:"Varese",c:"L682"},{n:"Velletri",c:"L719"},
+  {n:"Venezia",c:"L736"},{n:"Verbania",c:"L746"},{n:"Vercelli",c:"L750"},
+  {n:"Verona",c:"L781"},{n:"Vibo Valentia",c:"F537"},{n:"Vicenza",c:"L840"},
+  {n:"Viterbo",c:"L872"},{n:"Vittoria",c:"M088"},
+  // Comuni provincia per provincia (extra)
+  // Puglia
+  {n:"Altamura",c:"A225"},{n:"Bisceglie",c:"A885"},{n:"Canosa di Puglia",c:"B619"},
+  {n:"Cerignola",c:"C514"},{n:"Corato",c:"D982"},{n:"Fasano",c:"D508"},
+  {n:"Foggia",c:"D643"},{n:"Gravina in Puglia",c:"E155"},{n:"Lecce",c:"E492"},
+  {n:"Lucera",c:"E716"},{n:"Manduria",c:"E882"},{n:"Margherita di Savoia",c:"E946"},
+  {n:"Martina Franca",c:"E986"},{n:"Molfetta",c:"F284"},{n:"Monopoli",c:"F376"},
+  {n:"Nardò",c:"F842"},{n:"Oria",c:"G098"},{n:"Ostuni",c:"G185"},
+  {n:"Ruvo di Puglia",c:"H645"},{n:"San Ferdinando di Puglia",c:"H839"},
+  {n:"Taranto",c:"L049"},{n:"Trani",c:"L328"},{n:"Trinitapoli",c:"B915"},
+  {n:"Vieste",c:"L858"},
+  // Campania
+  {n:"Acerra",c:"A024"},{n:"Afragola",c:"A064"},{n:"Agropoli",c:"A091"},
+  {n:"Ariano Irpino",c:"A399"},{n:"Avellino",c:"A509"},{n:"Aversa",c:"A512"},
+  {n:"Battipaglia",c:"A717"},{n:"Benevento",c:"A783"},{n:"Caivano",c:"B371"},
+  {n:"Cardito",c:"B759"},{n:"Casalnuovo di Napoli",c:"B905"},
+  {n:"Caserta",c:"B963"},{n:"Casoria",c:"B990"},
+  {n:"Castellammare di Stabia",c:"C129"},{n:"Cava de' Tirreni",c:"C361"},
+  {n:"Eboli",c:"C176"},{n:"Ercolano",c:"H243"},{n:"Frattamaggiore",c:"D789"},
+  {n:"Giugliano in Campania",c:"E054"},{n:"Marano di Napoli",c:"E906"},
+  {n:"Marigliano",c:"E955"},{n:"Mondragone",c:"F352"},{n:"Napoli",c:"F839"},
+  {n:"Nocera Inferiore",c:"F913"},{n:"Nola",c:"F924"},{n:"Pagani",c:"G230"},
+  {n:"Pomigliano d'Arco",c:"G812"},{n:"Pompei",c:"G813"},{n:"Portici",c:"G902"},
+  {n:"Pozzuoli",c:"G964"},{n:"Qualiano",c:"H101"},{n:"Salerno",c:"H703"},
+  {n:"San Giorgio a Cremano",c:"H892"},{n:"Sarno",c:"I438"},{n:"Scafati",c:"I483"},
+  {n:"Sorrento",c:"I862"},{n:"Torre Annunziata",c:"L245"},
+  {n:"Torre del Greco",c:"L259"},
+  // Sicilia
+  {n:"Acireale",c:"A028"},{n:"Adrano",c:"A056"},{n:"Agrigento",c:"A089"},
+  {n:"Avola",c:"A522"},{n:"Bagheria",c:"A546"},
+  {n:"Barcellona Pozzo di Gotto",c:"A638"},{n:"Bronte",c:"B202"},
+  {n:"Caltanissetta",c:"B429"},{n:"Caltagirone",c:"B428"},
+  {n:"Castelvetrano",c:"C276"},{n:"Catania",c:"C351"},
+  {n:"Enna",c:"C342"},{n:"Gela",c:"D960"},{n:"Giarre",c:"E017"},
+  {n:"Licata",c:"E573"},{n:"Marsala",c:"E974"},
+  {n:"Mazara del Vallo",c:"F061"},{n:"Messina",c:"F158"},
+  {n:"Misilmeri",c:"F246"},{n:"Modica",c:"F258"},{n:"Monreale",c:"F377"},
+  {n:"Pachino",c:"G209"},{n:"Palermo",c:"G273"},{n:"Paternò",c:"G371"},
+  {n:"Ragusa",c:"H163"},{n:"Sciacca",c:"I533"},{n:"Siracusa",c:"I754"},
+  {n:"Trapani",c:"L331"},{n:"Vittoria",c:"M088"},
+  // Calabria
+  {n:"Catanzaro",c:"C352"},{n:"Corigliano-Rossano",c:"D004"},
+  {n:"Cosenza",c:"D086"},{n:"Crotone",c:"D122"},{n:"Lamezia Terme",c:"M208"},
+  {n:"Locri",c:"E639"},{n:"Mileto",c:"F207"},{n:"Palmi",c:"G282"},
+  {n:"Reggio Calabria",c:"H224"},{n:"Vibo Valentia",c:"F537"},
+  // Lazio
+  {n:"Albano Laziale",c:"A132"},{n:"Anzio",c:"A323"},{n:"Aprilia",c:"A341"},
+  {n:"Ardea",c:"M213"},{n:"Civitavecchia",c:"C773"},
+  {n:"Colleferro",c:"C857"},{n:"Fiumicino",c:"M297"},{n:"Formia",c:"D708"},
+  {n:"Frosinone",c:"D810"},{n:"Guidonia Montecelio",c:"E263"},
+  {n:"Latina",c:"E472"},{n:"Monterotondo",c:"F610"},
+  {n:"Ostia Antica",c:"G391"},{n:"Pomezia",c:"G811"},
+  {n:"Rieti",c:"H282"},{n:"Roma",c:"H501"},{n:"Tivoli",c:"L182"},
+  {n:"Velletri",c:"L719"},{n:"Viterbo",c:"L872"},
+  // Lombardia
+  {n:"Bergamo",c:"A794"},{n:"Brescia",c:"B157"},{n:"Busto Arsizio",c:"B300"},
+  {n:"Cinisello Balsamo",c:"C707"},{n:"Como",c:"C933"},
+  {n:"Cremona",c:"D150"},{n:"Gallarate",c:"D869"},{n:"Lecco",c:"E498"},
+  {n:"Lodi",c:"E648"},{n:"Mantova",c:"E897"},{n:"Milano",c:"F205"},
+  {n:"Monza",c:"F704"},{n:"Pavia",c:"G388"},{n:"Rho",c:"H264"},
+  {n:"Sesto San Giovanni",c:"I690"},{n:"Sondrio",c:"I829"},
+  {n:"Varese",c:"L682"},{n:"Vigevano",c:"L872"},
+  // Piemonte
+  {n:"Alba",c:"A124"},{n:"Alessandria",c:"A182"},{n:"Asti",c:"A479"},
+  {n:"Biella",c:"A859"},{n:"Cuneo",c:"D205"},{n:"Moncalieri",c:"F340"},
+  {n:"Novara",c:"F952"},{n:"Torino",c:"L219"},{n:"Verbania",c:"L746"},
+  {n:"Vercelli",c:"L750"},
+  // Veneto
+  {n:"Bassano del Grappa",c:"A703"},{n:"Belluno",c:"A757"},
+  {n:"Chioggia",c:"C625"},{n:"Mestre",c:"F160"},{n:"Padova",c:"G224"},
+  {n:"Rovigo",c:"H620"},{n:"Treviso",c:"L407"},{n:"venezia",c:"L736"},
+  {n:"Venezia",c:"L736"},{n:"Verona",c:"L781"},{n:"Vicenza",c:"L840"},
+  // Emilia-Romagna
+  {n:"Bologna",c:"A944"},{n:"Carpi",c:"B819"},{n:"Cesena",c:"C573"},
+  {n:"Faenza",c:"D458"},{n:"Ferrara",c:"D548"},{n:"Forlì",c:"D704"},
+  {n:"Imola",c:"E289"},{n:"Modena",c:"F257"},{n:"Parma",c:"G337"},
+  {n:"Piacenza",c:"G535"},{n:"Ravenna",c:"H199"},{n:"Reggio Emilia",c:"H223"},
+  {n:"Rimini",c:"H294"},
+  // Toscana
+  {n:"Arezzo",c:"A390"},{n:"Carrara",c:"B832"},{n:"Firenze",c:"D612"},
+  {n:"Grosseto",c:"E202"},{n:"Livorno",c:"E625"},{n:"Lucca",c:"E715"},
+  {n:"Massa",c:"F023"},{n:"Pisa",c:"G702"},{n:"Pistoia",c:"G713"},
+  {n:"Prato",c:"G999"},{n:"Siena",c:"I726"},
+  // Marche
+  {n:"Ancona",c:"A271"},{n:"Ascoli Piceno",c:"A462"},{n:"Fermo",c:"D542"},
+  {n:"Macerata",c:"E783"},{n:"Pesaro",c:"G479"},{n:"Senigallia",c:"I608"},
+  // Umbria
+  {n:"Foligno",c:"D653"},{n:"Perugia",c:"G478"},{n:"Terni",c:"L117"},
+  // Abruzzo
+  {n:"Chieti",c:"C469"},{n:"L'Aquila",c:"A345"},{n:"Lanciano",c:"E435"},
+  {n:"Pescara",c:"G482"},{n:"Teramo",c:"L103"},
+  // Molise
+  {n:"Campobasso",c:"B519"},{n:"Isernia",c:"E335"},
+  // Basilicata
+  {n:"Matera",c:"F052"},{n:"Potenza",c:"G942"},
+  // Sardegna
+  {n:"Alghero",c:"A192"},{n:"Cagliari",c:"B354"},{n:"Nuoro",c:"F979"},
+  {n:"Olbia",c:"G015"},{n:"Oristano",c:"G113"},{n:"Quartu Sant'Elena",c:"H118"},
+  {n:"Sassari",c:"I452"},{n:"Sud Sardegna",c:"M337"},
+  // Friuli-Venezia Giulia
+  {n:"Gorizia",c:"E098"},{n:"Pordenone",c:"G888"},{n:"Trieste",c:"L424"},
+  {n:"Udine",c:"L483"},
+  // Liguria
+  {n:"Albenga",c:"A145"},{n:"Genova",c:"D969"},{n:"Imperia",c:"E290"},
+  {n:"La Spezia",c:"E463"},{n:"Sanremo",c:"I138"},{n:"Savona",c:"I480"},
+  // Trentino-Alto Adige
+  {n:"Bolzano",c:"A952"},{n:"Merano",c:"F132"},{n:"Trento",c:"L378"},
+  // Valle d'Aosta
+  {n:"Aosta",c:"A326"},
+  // Stati esteri
+  {n:"Albania",c:"Z100"},{n:"Algeria",c:"Z301"},{n:"Argentina",c:"Z600"},
+  {n:"Australia",c:"Z700"},{n:"Austria",c:"Z102"},{n:"Belgio",c:"Z103"},
+  {n:"Bolivia",c:"Z601"},{n:"Bosnia-Erzegovina",c:"Z153"},{n:"Brasile",c:"Z602"},
+  {n:"Bulgaria",c:"Z104"},{n:"Canada",c:"Z401"},{n:"Cechia",c:"Z105"},
+  {n:"Cile",c:"Z603"},{n:"Cina",c:"Z210"},{n:"Colombia",c:"Z604"},
+  {n:"Croazia",c:"Z149"},{n:"Cuba",c:"Z405"},{n:"Danimarca",c:"Z107"},
+  {n:"Ecuador",c:"Z605"},{n:"Egitto",c:"Z336"},{n:"Etiopia",c:"Z315"},
+  {n:"Filippine",c:"Z216"},{n:"Finlandia",c:"Z109"},{n:"Francia",c:"Z110"},
+  {n:"Germania",c:"Z112"},{n:"Ghana",c:"Z316"},{n:"Giappone",c:"Z219"},
+  {n:"Gran Bretagna",c:"Z114"},{n:"Grecia",c:"Z115"},{n:"India",c:"Z222"},
+  {n:"Indonesia",c:"Z223"},{n:"Iran",c:"Z224"},{n:"Iraq",c:"Z225"},
+  {n:"Irlanda",c:"Z116"},{n:"Israele",c:"Z228"},{n:"Kosovo",c:"Z160"},
+  {n:"Libano",c:"Z229"},{n:"Libia",c:"Z326"},{n:"Lussemburgo",c:"Z119"},
+  {n:"Macedonia del Nord",c:"Z148"},{n:"Marocco",c:"Z330"},
+  {n:"Messico",c:"Z414"},{n:"Moldova",c:"Z140"},{n:"Montenegro",c:"Z159"},
+  {n:"Nigeria",c:"Z335"},{n:"Norvegia",c:"Z125"},{n:"Paesi Bassi",c:"Z126"},
+  {n:"Pakistan",c:"Z236"},{n:"Paraguay",c:"Z610"},{n:"Perù",c:"Z611"},
+  {n:"Polonia",c:"Z127"},{n:"Portogallo",c:"Z130"},{n:"Romania",c:"Z129"},
+  {n:"Russia",c:"Z154"},{n:"Senegal",c:"Z343"},{n:"Serbia",c:"Z158"},
+  {n:"Slovacchia",c:"Z155"},{n:"Slovenia",c:"Z150"},{n:"Somalia",c:"Z342"},
+  {n:"Spagna",c:"Z131"},{n:"Sri Lanka",c:"Z209"},{n:"Stati Uniti d'America",c:"Z404"},
+  {n:"Svezia",c:"Z132"},{n:"Svizzera",c:"Z133"},{n:"Tunisia",c:"Z352"},
+  {n:"Turchia",c:"Z243"},{n:"Ucraina",c:"Z138"},{n:"Ungheria",c:"Z134"},
+  {n:"Uruguay",c:"Z613"},{n:"Venezuela",c:"Z614"},{n:"Vietnam",c:"Z251"},
+];
+
+// ── Helper: estrai consonanti e vocali ─────────────────────────────────────
+function getConsonants(s) {
+  return s.toUpperCase().replace(/[^A-Z]/g,'').split('').filter(c => !'AEIOU'.includes(c));
+}
+function getVowels(s) {
+  return s.toUpperCase().replace(/[^A-Z]/g,'').split('').filter(c => 'AEIOU'.includes(c));
+}
+
+// ── Calcola parte cognome (3 lettere) ─────────────────────────────────────
+function codeCognome(cognome) {
+  const cons = getConsonants(cognome);
+  const voc  = getVowels(cognome);
+  const all  = [...cons, ...voc, 'X','X','X'];
+  return all.slice(0,3).join('');
+}
+
+// ── Calcola parte nome (3 lettere) ────────────────────────────────────────
+function codeNome(nome) {
+  const cons = getConsonants(nome);
+  const voc  = getVowels(nome);
+  if (cons.length >= 4) {
+    // prende 1ª, 3ª, 4ª consonante
+    return cons[0] + cons[2] + cons[3];
+  }
+  const all = [...cons, ...voc, 'X','X','X'];
+  return all.slice(0,3).join('');
+}
+
+// ── Carattere di controllo ────────────────────────────────────────────────
+const ODD_MAP = {
+  '0':1,'1':0,'2':5,'3':7,'4':9,'5':13,'6':15,'7':17,'8':19,'9':21,
+  'A':1,'B':0,'C':5,'D':7,'E':9,'F':13,'G':15,'H':17,'I':19,'J':21,
+  'K':2,'L':4,'M':18,'N':20,'O':11,'P':3,'Q':6,'R':8,'S':12,'T':14,
+  'U':16,'V':10,'V':10,'W':22,'X':25,'Y':24,'Z':23
+};
+
+function calcControlChar(cf15) {
+  let sum = 0;
+  for (let i = 0; i < 15; i++) {
+    const c = cf15[i];
+    if ((i+1) % 2 === 0) {
+      // posizione pari: valore ordinale
+      sum += isNaN(c) ? c.charCodeAt(0) - 65 : parseInt(c);
+    } else {
+      // posizione dispari
+      sum += ODD_MAP[c] || 0;
+    }
+  }
+  return String.fromCharCode(65 + (sum % 26));
+}
+
+// ── Calcola CF ────────────────────────────────────────────────────────────
+function calculateCF() {
+  const cognome = document.getElementById('cognome').value.trim();
+  const nome    = document.getElementById('nome').value.trim();
+  const giorno  = parseInt(document.getElementById('giorno').value);
+  const mese    = parseInt(document.getElementById('mese').value);
+  const anno    = document.getElementById('anno').value.trim();
+  const sesso   = document.querySelector('input[name="sesso"]:checked').value;
+  const comuneCode = document.getElementById('comune-code').value;
+  const errorEl = document.getElementById('error-msg');
+
+  // Validazione
+  errorEl.style.display = 'none';
+  const errors = [];
+  if (cognome.length < 2) errors.push('Inserisci un cognome valido');
+  if (nome.length < 2) errors.push('Inserisci un nome valido');
+  if (!giorno || giorno < 1 || giorno > 31) errors.push('Giorno non valido');
+  if (!mese) errors.push('Seleziona il mese');
+  if (!anno || anno.length !== 4) errors.push('Anno non valido (4 cifre)');
+  if (!comuneCode) errors.push('Seleziona un comune di nascita');
+
+  if (errors.length) {
+    errorEl.textContent = '⚠ ' + errors[0];
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  const partCognome = codeCognome(cognome);
+  const partNome    = codeNome(nome);
+  const partAnno    = anno.slice(-2);
+  const partMese    = MESE_CODES[mese - 1];
+  const partGiorno  = String(sesso === 'F' ? giorno + 40 : giorno).padStart(2,'0');
+  const partComune  = comuneCode;
+
+  const cf15 = partCognome + partNome + partAnno + partMese + partGiorno + partComune;
+  const ctrl = calcControlChar(cf15);
+  const cf   = cf15 + ctrl;
+
+  // Display result
+  const resultEl = document.getElementById('result-code');
+  resultEl.innerHTML = `
+    <span class="segment seg-cognome" title="Cognome">${partCognome}</span>
+    <span class="segment seg-nome" title="Nome">${partNome}</span>
+    <span class="segment seg-anno" title="Anno">${partAnno}</span>
+    <span class="segment seg-mese" title="Mese">${partMese}</span>
+    <span class="segment seg-giorno" title="Giorno">${partGiorno}</span>
+    <span class="segment seg-comune" title="Comune">${partComune}</span>
+    <span class="segment seg-ctrl" title="Controllo">${ctrl}</span>
+  `;
+
+  document.getElementById('result-legend').innerHTML = `
+    <div class="legend-item"><div class="legend-dot" style="background:#7eb8f7"></div>Cognome</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#a78bf5"></div>Nome</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f7c97e"></div>Anno</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f78eb8"></div>Mese</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#7ef7c9"></div>Giorno</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f7a87e"></div>Comune</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#c8a96e"></div>Controllo</div>
+  `;
+
+  document.getElementById('result-card').dataset.cf = cf;
+  const card = document.getElementById('result-card');
+  card.classList.remove('visible');
+  void card.offsetWidth;
+  card.classList.add('visible');
+  card.style.display = 'block';
+}
+
+// ── Copy ──────────────────────────────────────────────────────────────────
+function copyCode() {
+  const cf = document.getElementById('result-card').dataset.cf;
+  if (!cf) return;
+  navigator.clipboard.writeText(cf).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.classList.add('copied');
+    btn.textContent = '✓ Copiato!';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copia`;
+    }, 2000);
+  });
+}
+
+// ── Comune search ─────────────────────────────────────────────────────────
+const comuneInput = document.getElementById('comune-input');
+const comuneDropdown = document.getElementById('comune-dropdown');
+const comuneCodeInput = document.getElementById('comune-code');
+
+comuneInput.addEventListener('input', () => {
+  const q = comuneInput.value.trim().toLowerCase();
+  comuneCodeInput.value = '';
+  if (q.length < 2) {
+    comuneDropdown.classList.remove('open');
+    return;
+  }
+  // deduplica per codice catastale, poi filtra e ordina
+  const seen = new Set();
+  const unique = COMUNI_DB.filter(c => {
+    if (seen.has(c.c)) return false;
+    seen.add(c.c);
+    return true;
+  });
+  const matches = unique
+    .filter(c => c.n.toLowerCase().startsWith(q))
+    .sort((a,b) => a.n.localeCompare(b.n))
+    .slice(0,10);
+  if (!matches.length) {
+    comuneDropdown.classList.remove('open');
+    return;
+  }
+  comuneDropdown.innerHTML = matches.map(c =>
+    `<div class="comune-option" data-code="${c.c}" data-name="${c.n}">
+      <span>${c.n}</span>
+      <span class="comune-code">${c.c}</span>
+    </div>`
+  ).join('');
+  comuneDropdown.classList.add('open');
+
+  comuneDropdown.querySelectorAll('.comune-option').forEach(el => {
+    el.addEventListener('click', () => {
+      comuneInput.value = el.dataset.name;
+      comuneCodeInput.value = el.dataset.code;
+      comuneDropdown.classList.remove('open');
+    });
+  });
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.comune-wrapper')) {
+    comuneDropdown.classList.remove('open');
+  }
+});
+
+// Enter to calculate
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !comuneDropdown.classList.contains('open')) calculateCF();
+});
+
+// ── Page navigation ────────────────────────────────────────────────────────
+function switchPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── CF Inverso ────────────────────────────────────────────────────────────
+function reverseLive() {
+  // anteprima in tempo reale mentre si digita (opzionale)
+}
+
+function reverseCF() {
+  const raw = document.getElementById('cf-input').value.trim().toUpperCase();
+  const errEl = document.getElementById('inv-error-msg');
+  errEl.style.display = 'none';
+
+  if (raw.length !== 16) {
+    errEl.textContent = '⚠ Il codice fiscale deve essere di 16 caratteri';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const reversed = raw.split('').reverse().join('');
+  document.getElementById('inv-original').textContent = raw;
+  document.getElementById('inv-reversed').textContent = reversed;
+
+  const res = document.getElementById('inv-result');
+  res.classList.remove('visible');
+  void res.offsetWidth;
+  res.classList.add('visible');
+  res.style.display = 'block';
+}
+
+function copyReversed() {
+  const val = document.getElementById('inv-reversed').textContent;
+  navigator.clipboard.writeText(val).then(() => {
+    const btn = document.getElementById('inv-copy-btn');
+    btn.classList.add('copied');
+    btn.textContent = '✓ Copiato!';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copia inverso`;
+    }, 2000);
+  });
+}
+
+// ── Calcola CF + Inverti ──────────────────────────────────────────────────
+function calcAndReverse() {
+  const cognome    = document.getElementById('inv-cognome').value.trim();
+  const nome       = document.getElementById('inv-nome').value.trim();
+  const giorno     = parseInt(document.getElementById('inv-giorno').value);
+  const mese       = parseInt(document.getElementById('inv-mese').value);
+  const anno       = document.getElementById('inv-anno').value.trim();
+  const sesso      = document.querySelector('input[name="inv-sesso"]:checked').value;
+  const comuneCode = document.getElementById('inv-comune-code').value;
+  const errEl      = document.getElementById('inv2-error-msg');
+  errEl.style.display = 'none';
+
+  const errors = [];
+  if (cognome.length < 2) errors.push('Inserisci un cognome valido');
+  if (nome.length < 2)    errors.push('Inserisci un nome valido');
+  if (!giorno || giorno < 1 || giorno > 31) errors.push('Giorno non valido');
+  if (!mese)              errors.push('Seleziona il mese');
+  if (!anno || anno.length !== 4) errors.push('Anno non valido (4 cifre)');
+  if (!comuneCode)        errors.push('Seleziona un comune di nascita');
+  if (errors.length) { errEl.textContent = '⚠ ' + errors[0]; errEl.style.display = 'block'; return; }
+
+  const partCognome = codeCognome(cognome);
+  const partNome    = codeNome(nome);
+  const partAnno    = anno.slice(-2);
+  const partMese    = MESE_CODES[mese - 1];
+  const partGiorno  = String(sesso === 'F' ? giorno + 40 : giorno).padStart(2,'0');
+  const cf15        = partCognome + partNome + partAnno + partMese + partGiorno + comuneCode;
+  const cf          = cf15 + calcControlChar(cf15);
+  const reversed    = cf.split('').reverse().join('');
+
+  document.getElementById('inv2-cf').textContent       = cf;
+  document.getElementById('inv2-reversed').textContent = reversed;
+
+  const res = document.getElementById('inv2-result');
+  res.classList.remove('visible');
+  void res.offsetWidth;
+  res.classList.add('visible');
+  res.style.display = 'block';
+}
+
+function copyReversed2() {
+  const val = document.getElementById('inv2-reversed').textContent;
+  navigator.clipboard.writeText(val).then(() => {
+    const btn = document.getElementById('inv2-copy-btn');
+    btn.classList.add('copied');
+    btn.textContent = '✓ Copiato!';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copia inverso`;
+    }, 2000);
+  });
+}
+
+// ── Secondo campo comune (pagina inverso) ─────────────────────────────────
+const invComuneInput    = document.getElementById('inv-comune-input');
+const invComuneDropdown = document.getElementById('inv-comune-dropdown');
+const invComuneCode     = document.getElementById('inv-comune-code');
+
+invComuneInput.addEventListener('input', () => {
+  const q = invComuneInput.value.trim().toLowerCase();
+  invComuneCode.value = '';
+  if (q.length < 2) { invComuneDropdown.classList.remove('open'); return; }
+  const seen = new Set();
+  const matches = COMUNI_DB
+    .filter(c => { if(seen.has(c.c)) return false; seen.add(c.c); return true; })
+    .filter(c => c.n.toLowerCase().startsWith(q))
+    .sort((a,b) => a.n.localeCompare(b.n))
+    .slice(0,10);
+  if (!matches.length) { invComuneDropdown.classList.remove('open'); return; }
+  invComuneDropdown.innerHTML = matches.map(c =>
+    `<div class="comune-option" data-code="${c.c}" data-name="${c.n}">
+      <span>${c.n}</span><span class="comune-code">${c.c}</span>
+    </div>`).join('');
+  invComuneDropdown.classList.add('open');
+  invComuneDropdown.querySelectorAll('.comune-option').forEach(el => {
+    el.addEventListener('click', () => {
+      invComuneInput.value   = el.dataset.name;
+      invComuneCode.value    = el.dataset.code;
+      invComuneDropdown.classList.remove('open');
+    });
+  });
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#inv-comune-dropdown') && !e.target.closest('#inv-comune-input'))
+    invComuneDropdown.classList.remove('open');
+});
+
+
+let currentTheme = 'dark';
+
+function toggleTheme() {
+  currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', currentTheme === 'light' ? 'light' : '');
+  const icon = document.getElementById('toggle-icon');
+  const label = document.getElementById('toggle-label');
+  if (currentTheme === 'light') {
+    icon.textContent = '🌙';
+    label.textContent = 'Tema scuro';
+  } else {
+    icon.textContent = '🌸';
+    label.textContent = 'Tema chiaro';
+  }
+}
+</script>
+</body>
+</html>
