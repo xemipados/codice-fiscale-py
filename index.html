@@ -649,8 +649,9 @@
 
   <!-- Navigazione -->
   <div class="nav-tabs">
-    <button class="nav-tab active" onclick="switchPage('calcola')">⟶ Calcola CF</button>
-    <button class="nav-tab" onclick="switchPage('decodifica')">⟵ Decodifica CF</button>
+    <button class="nav-tab active" onclick="switchPage('calcola', this)">⟶ Calcola CF</button>
+    <button class="nav-tab" onclick="switchPage('inverso', this)">↺ CF Inverso</button>
+    <button class="nav-tab" onclick="switchPage('decodifica', this)">🔍 Decodifica CF</button>
   </div>
 
   <!-- PAGINA 1: Calcola CF -->
@@ -734,7 +735,7 @@
   </div><!-- /page-calcola -->
 
   <!-- PAGINA 2: CF Inverso -->
-  <div class="page" id="page-decodifica">
+  <div class="page" id="page-inverso">
   <div class="card">
     <div class="card-section-title">Codice fiscale da invertire</div>
     <div class="form-grid">
@@ -848,6 +849,40 @@
     </div>
   </div>
 
+  </div><!-- /page-inverso -->
+
+  <!-- PAGINA 3: Decodifica CF -->
+  <div class="page" id="page-decodifica">
+  <div class="card">
+    <div class="card-section-title">Inserisci il codice fiscale</div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label for="dec-input">Codice Fiscale (16 caratteri)</label>
+        <input type="text" id="dec-input" placeholder="es. RSSMRA85M01H501Z"
+          maxlength="16" autocomplete="off"
+          oninput="this.value=this.value.toUpperCase();"
+          style="text-transform:uppercase;font-family:'DM Mono',monospace;font-size:18px;letter-spacing:0.12em;">
+      </div>
+    </div>
+    <div class="error-msg" id="dec-error-msg"></div>
+    <button class="btn-calculate" onclick="decodeCF()">🔍 Decodifica</button>
+  </div>
+
+  <div class="inv-result" id="dec-result">
+    <div class="card">
+      <div class="card-section-title">Dati estratti dal codice fiscale</div>
+
+      <!-- Visualizzazione CF colorata -->
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:20px 24px;margin-bottom:24px;transition:background 0.4s,border-color 0.4s;">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.2em;color:var(--text-muted);margin-bottom:12px;">STRUTTURA</div>
+        <div id="dec-chars" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+        <div id="dec-valid" style="margin-top:14px;"></div>
+      </div>
+
+      <!-- Campi dati -->
+      <div class="inv-grid" id="dec-fields"></div>
+    </div>
+  </div>
   </div><!-- /page-decodifica -->
 
 </div>
@@ -1264,12 +1299,133 @@ document.addEventListener('keydown', e => {
 });
 
 // ── Page navigation ────────────────────────────────────────────────────────
-function switchPage(page) {
+function switchPage(page, btn) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
-  event.target.classList.add('active');
+  if (btn) btn.classList.add('active');
 }
+
+// ── Decodifica CF ─────────────────────────────────────────────────────────
+const MESE_MAP  = {A:1,B:2,C:3,D:4,E:5,H:6,L:7,M:8,P:9,R:10,S:11,T:12};
+const MESE_NOMI = ['','Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
+                   'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+
+function decodeCF() {
+  const raw   = document.getElementById('dec-input').value.trim().toUpperCase();
+  const errEl = document.getElementById('dec-error-msg');
+  errEl.style.display = 'none';
+
+  if (raw.length !== 16) {
+    errEl.textContent = '⚠ Il codice fiscale deve essere di 16 caratteri';
+    errEl.style.display = 'block'; return;
+  }
+  if (!/^[A-Z0-9]{16}$/.test(raw)) {
+    errEl.textContent = '⚠ Caratteri non validi nel codice fiscale';
+    errEl.style.display = 'block'; return;
+  }
+
+  const partCognome = raw.slice(0,3);
+  const partNome    = raw.slice(3,6);
+  const partAnno    = raw.slice(6,8);
+  const partMese    = raw[8];
+  const partGiorno  = raw.slice(9,11);
+  const partComune  = raw.slice(11,15);
+  const partCtrl    = raw[15];
+
+  // Sesso e giorno
+  const giornoNum = parseInt(partGiorno);
+  const sesso     = giornoNum > 40 ? 'F' : 'M';
+  const giorno    = sesso === 'F' ? giornoNum - 40 : giornoNum;
+
+  // Mese
+  const meseNum  = MESE_MAP[partMese] || 0;
+  const meseNome = MESE_NOMI[meseNum] || '?';
+
+  // Anno (euristica: <= anno corrente → 2000s, altrimenti 1900s)
+  const annoShort = parseInt(partAnno);
+  const annoFull  = annoShort <= (new Date().getFullYear() % 100)
+    ? 2000 + annoShort : 1900 + annoShort;
+
+  // Comune
+  const comuneTrovato = COMUNI_DB.find(c => c.c === partComune);
+  const comuneNome    = comuneTrovato ? comuneTrovato.n : null;
+
+  // Verifica carattere di controllo
+  const ctrlOk = calcControlChar(raw.slice(0,15)) === partCtrl;
+
+  // ── CF colorato per segmento ──
+  const segmenti = [
+    {chars:partCognome, label:'Cognome', color:'#7eb8f7'},
+    {chars:partNome,    label:'Nome',    color:'#a78bf5'},
+    {chars:partAnno,    label:'Anno',    color:'#f7c97e'},
+    {chars:partMese,    label:'Mese',    color:'#f78eb8'},
+    {chars:partGiorno,  label:'Giorno',  color:'#7ef7c9'},
+    {chars:partComune,  label:'Comune',  color:'#f7a87e'},
+    {chars:partCtrl,    label:'Ctrl',    color:'#c8a96e'},
+  ];
+  document.getElementById('dec-chars').innerHTML = segmenti.map(s =>
+    `<div style="display:flex;flex-direction:column;align-items:center;gap:5px;margin-right:4px;">
+      <div style="font-family:'DM Mono',monospace;font-size:clamp(1.1rem,3vw,1.6rem);font-weight:500;color:${s.color};letter-spacing:0.12em">${s.chars}</div>
+      <div style="font-size:9px;letter-spacing:0.15em;color:var(--text-muted);text-transform:uppercase">${s.label}</div>
+    </div>`
+  ).join(`<div style="color:var(--border);font-size:1.4rem;padding-bottom:18px;">·</div>`);
+
+  // ── Badge validità ──
+  document.getElementById('dec-valid').innerHTML = ctrlOk
+    ? `<span style="display:inline-flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:11px;padding:4px 14px;border-radius:20px;background:rgba(85,196,158,0.12);color:var(--green);border:1px solid var(--green);">✓ Codice fiscale valido</span>`
+    : `<span style="display:inline-flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:11px;padding:4px 14px;border-radius:20px;background:rgba(224,85,85,0.10);color:var(--red);border:1px solid var(--red);">✗ Carattere di controllo errato</span>`;
+
+  // ── Campi estratti ──
+  document.getElementById('dec-fields').innerHTML = `
+    <div class="inv-field">
+      <div class="inv-field-label">Iniziali cognome</div>
+      <div class="inv-field-value highlight">${partCognome}</div>
+    </div>
+    <div class="inv-field">
+      <div class="inv-field-label">Iniziali nome</div>
+      <div class="inv-field-value highlight">${partNome}</div>
+    </div>
+    <div class="inv-field">
+      <div class="inv-field-label">Sesso</div>
+      <div class="inv-field-value">${sesso === 'M' ? '♂ Maschio' : '♀ Femmina'}</div>
+    </div>
+    <div class="inv-field">
+      <div class="inv-field-label">Giorno di nascita</div>
+      <div class="inv-field-value">${giorno}</div>
+    </div>
+    <div class="inv-field">
+      <div class="inv-field-label">Mese di nascita</div>
+      <div class="inv-field-value">${meseNome}</div>
+    </div>
+    <div class="inv-field">
+      <div class="inv-field-label">Anno di nascita</div>
+      <div class="inv-field-value">${annoFull}
+        <span style="color:var(--text-muted);font-size:12px;margin-left:6px;">(oppure ${annoFull < 2000 ? annoFull + 100 : annoFull - 100})</span>
+      </div>
+    </div>
+    <div class="inv-field inv-full">
+      <div class="inv-field-label">Data di nascita</div>
+      <div class="inv-field-value" style="font-size:20px;">${giorno} ${meseNome} ${annoFull}</div>
+    </div>
+    <div class="inv-field inv-full">
+      <div class="inv-field-label">Comune / Stato di nascita</div>
+      <div class="inv-field-value">
+        ${comuneNome
+          ? `${comuneNome} <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text-muted);margin-left:6px;">(${partComune})</span>`
+          : `<span style="color:var(--text-muted);">Codice catastale: </span><span style="font-family:'DM Mono',monospace;color:var(--accent);">${partComune}</span> <span style="font-size:12px;color:var(--text-muted);">(non trovato nel DB locale)</span>`
+        }
+      </div>
+    </div>
+  `;
+
+  const res = document.getElementById('dec-result');
+  res.classList.remove('visible');
+  void res.offsetWidth;
+  res.classList.add('visible');
+  res.style.display = 'block';
+}
+
 
 // ── CF Inverso ────────────────────────────────────────────────────────────
 function reverseLive() {
